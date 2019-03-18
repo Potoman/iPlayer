@@ -71,6 +71,15 @@ void Player::process() {
         std::this_thread::sleep_for(200ms);
     }
 
+    //std::cout << "f.n is " << f.n << '\n';
+
+    while (true) {
+        std::string cmd;
+        std::getline(std::cin, cmd);
+        process(cmd);
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+
     /*
     auto superProgressBar3Rows = [](auto x, auto y, auto z) -> StackLayout<> {
     return {
@@ -106,6 +115,36 @@ void Player::process() {
     }*/
 }
 
+void Player::process(const std::string & cmd) {
+    m_view = m_view.process(cmd);
+}
+
+PlayerView::~PlayerView() {
+}
+
+PlayerView & PlayerView::process(const std::string & cmd) {
+    return *this;
+}
+
+PlayerViewTrack::~PlayerViewTrack() {
+}
+
+PlayerView & PlayerViewTrack::process(const std::string & cmd) {
+    if (cmd == "play") {
+        return TRACK_VIEW;
+    }
+    return LISTENING_VIEW;
+}
+
+PlayerViewListening::~PlayerViewListening() {
+}
+
+PlayerView & PlayerViewListening::process(const std::string & cmd) {
+    return LISTENING_VIEW;
+}
+
+PlayerViewTrack TRACK_VIEW = PlayerViewTrack();
+PlayerViewListening LISTENING_VIEW = PlayerViewListening();
 
 // When playing :
 
