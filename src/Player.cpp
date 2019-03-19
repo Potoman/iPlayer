@@ -56,13 +56,6 @@ size_t SIZE = 36;
 VirtualTerminal vt;
 
 void Player::process() {
-    // What do you want to do ?
-    // < add track
-    // < remove a track
-    // < play a track
-
-    // play, pause, next, previous
-    // Random
 
     vt = renderToTerm(vt, SIZE, m_state->getView());
     while (true) {
@@ -194,11 +187,26 @@ Component PlayerViewListening::getView() {
         oss << "< prEvious     " << (m_isPlay ? "Play " : "Pause") << "          Next >";
         return oss.str();
     };
+    auto timeStatus = [&] {
+        std::ostringstream oss;
+        {
+            uint32_t timeElpase = m_timeElapse.count();
+            uint32_t sec = timeElpase % 60;
+            oss << (timeElpase / 60) << "." << (sec < 10 ? "0" : "") << sec;
+        }
+        oss << "                            ";
+        {
+            uint32_t timeRemain = track.getTime().count() - m_timeElapse.count();
+            uint32_t sec = timeRemain % 60;
+            oss << (timeRemain / 60) << "." << (sec < 10 ? "0" : "") << sec;
+        }
+        return oss.str();
+    };
     return StackLayout<>{
                     Text(line0()),
                     Text(line1()),
                     Progress(percent, Pixel{' ', {(m_isPlay ? Color::Blue : Color::Red)}}, Pixel{' ', {(m_isPlay ? Color::Cyan : Color::Yellow)}}),
-                    Text(Style(Color::Black, FontColor::White, Font::Bold), "0.00                            2.35"),
+                    Text(Style(Color::Black, FontColor::White, Font::Bold), timeStatus()),
                     Text(lineStatus()),
                     Text("Random                        rEpeat"),
                     Text("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"),

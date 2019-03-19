@@ -1,3 +1,3 @@
 #include "Track.h"
 
-Track Track::STUB = Track("---", "---", 30);
+Track Track::STUB = Track("---", "---", 62);
