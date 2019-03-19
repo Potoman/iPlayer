@@ -34,8 +34,12 @@ public:
 };
 
 class PlayerViewTrack : public PlayerView {
+private:
+
+    int m_currentIndex;
+
 public:
-    PlayerViewTrack();
+    PlayerViewTrack(int index);
     virtual ~PlayerViewTrack();
 
     std::unique_ptr<PlayerView> process(const std::string & cmd) override;
@@ -43,8 +47,12 @@ public:
 };
 
 class PlayerViewListening : public PlayerView {
+private:
+
+    const Track & m_track;
+
 public:
-    PlayerViewListening();
+    PlayerViewListening(const Track & track);
     virtual ~PlayerViewListening();
 
     std::unique_ptr<PlayerView> process(const std::string & cmd) override;
@@ -59,7 +67,7 @@ private:
 
 public:
 
-    Player() : m_view(new PlayerViewTrack()) {
+    Player() : m_view(new PlayerViewTrack(0)) {
     }
 
     void process();

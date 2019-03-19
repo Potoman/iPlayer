@@ -1,6 +1,7 @@
     
 #include "Player.h"
 
+#include <sstream>
 #include <string>
 #include <thread>
 #include <chrono>
@@ -79,7 +80,7 @@ void Player::process(const std::string & cmd) {
 PlayerView::~PlayerView() {
 }
 
-PlayerViewTrack::PlayerViewTrack() : PlayerView("mlk") {
+PlayerViewTrack::PlayerViewTrack(int index) : PlayerView("mlk"), m_currentIndex(index) {
 }
 
 PlayerViewTrack::~PlayerViewTrack() {
@@ -87,9 +88,9 @@ PlayerViewTrack::~PlayerViewTrack() {
 
 std::unique_ptr<PlayerView> PlayerViewTrack::process(const std::string & cmd) {
     if (cmd == "p") {
-        return std::unique_ptr<PlayerView>(new PlayerViewListening());
+        return std::unique_ptr<PlayerView>(new PlayerViewListening(p.getLibrary().getTrack(m_currentIndex)));
     }
-    return std::unique_ptr<PlayerView>(new PlayerViewTrack());
+    return std::unique_ptr<PlayerView>(new PlayerViewTrack(m_currentIndex));
 }
 
 Component PlayerViewTrack::getView() {
@@ -108,18 +109,24 @@ Component PlayerViewTrack::getView() {
             };
 }
 
-PlayerViewListening::PlayerViewListening() : PlayerView("mlk") {
+PlayerViewListening::PlayerViewListening(const Track & track) : PlayerView("mlk"), m_track(track) {
 }
 
 PlayerViewListening::~PlayerViewListening() {
 }
 
+bool isPlay = true;
+
 std::unique_ptr<PlayerView> PlayerViewListening::process(const std::string & cmd) {
     if (cmd == "b") {
-        return std::unique_ptr<PlayerView>(new PlayerViewTrack());
+        return std::unique_ptr<PlayerView>(new PlayerViewTrack(0));
+    }
+    else if (cmd == "p" || cmd == " ") {
+        isPlay = !isPlay;
+        return std::unique_ptr<PlayerView>(new PlayerViewListening(m_track));
     }
     else {
-        return std::unique_ptr<PlayerView>(new PlayerViewListening());
+        return std::unique_ptr<PlayerView>(new PlayerViewListening(m_track));
     }
 }
 
@@ -127,20 +134,37 @@ Component PlayerViewListening::getView() {
     static double percent = 0.0;
     percent += 0.1;
     percent = std::min(percent, 1.0);
+    const Track & track = p.getLibrary().getTrack(0);
+    auto line0 = [&track] {
+        std::ostringstream oss;
+        oss << "Name : " << track.getTitle();
+        return oss.str();
+    };
+    auto line1 = [&track] {
+        std::ostringstream oss;
+        oss << "Author : " << track.getAuthor();
+        return oss.str();
+    };
+    auto lineStatus = [] {
+        std::ostringstream oss;
+        oss << "< Previous     " << (isPlay ? "Play " : "Pause") << "          Next >";
+        return oss.str();
+    };
+    
     return StackLayout<>{
-                    Text("Name : toto.mp3"),
-                    Text("Author : Plop plop"),
+                    Text(line0()),
+                    Text(line1()),
                     Text("----------------------I-------------"),
                     Text("0.00                            2.35"),
-                    Text("< Previous     Pause          Next >"),
+                    Text(lineStatus()),
                     Text("Random                        rEpeat"),
                     Text("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"),
                     Text("Back to tracklist"),
             };
 }
 
-PlayerViewTrack TRACK_VIEW = PlayerViewTrack();
-PlayerViewListening LISTENING_VIEW = PlayerViewListening();
+PlayerViewTrack TRACK_VIEW = PlayerViewTrack(0);
+PlayerViewListening LISTENING_VIEW = PlayerViewListening(Track::STUB);
 
 // When playing :
 
