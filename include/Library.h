@@ -11,9 +11,9 @@ private:
     std::vector<Track> m_tracks;
 
 public:
-    // @throw : std::out_of_range
+
     Track getTrack(uint32_t trackId);
-    //Track getNextTrack(const Track & track);
+    void addTrack(Track & track);
 
 };
 

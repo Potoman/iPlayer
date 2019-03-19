@@ -14,7 +14,7 @@ public:
     const std::string m_author;
     const std::chrono::seconds m_seconds;
 
-    Track(const std::string & title, const std::string & author, uint32_t seconds) : m_title(title), m_author(author), m_seconds(seconds)
+    Track(const std::string & title, const std::string & author, const std::chrono::seconds & seconds) : m_title(title), m_author(author), m_seconds(seconds)
     {}
 
     const std::string & getTitle() const {

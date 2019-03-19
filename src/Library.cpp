@@ -9,3 +9,7 @@ Track Library::getTrack(uint32_t trackId) {
     }
     return m_tracks.at(trackId);
 }
+
+void Library::addTrack(Track & track) {
+    m_tracks.push_back(track);
+}

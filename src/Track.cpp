@@ -1,3 +1,3 @@
 #include "Track.h"
 
-Track Track::STUB = Track("---", "---", 62);
+Track Track::STUB = Track("---", "---", std::chrono::seconds(62));

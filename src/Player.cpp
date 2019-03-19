@@ -259,7 +259,12 @@ PlayerViewListening LISTENING_VIEW(0);
 
 int main() {
 
-  p.process();
+    for (int i = 0; i < 30; i++) {
+        std::string title = "song " + std::to_string(i) + ".mp3";
+        Track t(title, "Johnny", std::chrono::seconds(55));
+        p.getLibrary().addTrack(t);
+    }
+    p.process();
 
-  return 0;
+    return 0;
 }
