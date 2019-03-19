@@ -3,7 +3,7 @@
 
 
 
-Track Library::getTrack(int trackId) {
+Track Library::getTrack(uint32_t trackId) {
     if (m_tracks.size() <= trackId) {
         return Track::STUB;
     }

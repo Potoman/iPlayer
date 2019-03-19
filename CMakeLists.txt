@@ -7,4 +7,5 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   rxterm/rxterm
   include
 )
+target_link_libraries (${PROJECT_NAME} pthread)
 

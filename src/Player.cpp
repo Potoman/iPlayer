@@ -52,6 +52,9 @@ std::vector<Track> Player::getView(int indexStart, int count) {
     return view;
 }
 
+size_t SIZE = 36;
+VirtualTerminal vt;
+
 void Player::process() {
     // What do you want to do ?
     // < add track
@@ -61,36 +64,53 @@ void Player::process() {
     // play, pause, next, previous
     // Random
 
-    VirtualTerminal vt;
-
-    vt = renderToTerm(vt, 80, m_view->getView());
+    vt = renderToTerm(vt, SIZE, m_state->getView());
     while (true) {
         char c = getch();
         std::string cmd(1, c);
         process(cmd);
-        vt = renderToTerm(vt, 80, m_view->getView());
-        std::this_thread::sleep_for(200ms);
+        updateView();
+        std::this_thread::sleep_for(25ms);
     }
 }
 
+void Player::updateView() {
+    vt = renderToTerm(vt, SIZE, m_state->getView());
+}
+
 void Player::process(const std::string & cmd) {
-    m_view = m_view->process(cmd);
+    std::lock_guard<std::recursive_mutex> lock(m_lock);
+    m_state->process(cmd);
+    if (m_futureState) {
+        m_state.swap(m_futureState);
+        m_futureState.reset();
+    }
+}
+
+void Player::setState(std::unique_ptr<PlayerView> & view) {
+    std::lock_guard<std::recursive_mutex> lock(m_lock);
+    m_futureState.swap(view);
+    view.reset();
 }
 
 PlayerView::~PlayerView() {
 }
 
-PlayerViewTrack::PlayerViewTrack(int index) : PlayerView("mlk"), m_currentIndex(index) {
+void PlayerView::fire() {
+    p.updateView();
+}
+
+PlayerViewTrack::PlayerViewTrack(int index) : PlayerView(), m_currentIndex(index) {
 }
 
 PlayerViewTrack::~PlayerViewTrack() {
 }
 
-std::unique_ptr<PlayerView> PlayerViewTrack::process(const std::string & cmd) {
+void PlayerViewTrack::process(const std::string & cmd) {
     if (cmd == "p") {
-        return std::unique_ptr<PlayerView>(new PlayerViewListening(p.getLibrary().getTrack(m_currentIndex)));
+        std::unique_ptr<PlayerView> state(new PlayerViewListening(m_currentIndex));
+        p.setState(state);
     }
-    return std::unique_ptr<PlayerView>(new PlayerViewTrack(m_currentIndex));
 }
 
 Component PlayerViewTrack::getView() {
@@ -109,32 +129,56 @@ Component PlayerViewTrack::getView() {
             };
 }
 
-PlayerViewListening::PlayerViewListening(const Track & track) : PlayerView("mlk"), m_track(track) {
+PlayerViewListening::PlayerViewListening(const uint32_t trackId) : PlayerView(), m_trackId(trackId), m_isRunning(true), m_isPlay(true), m_timeElapse(0) {
+    m_threadPlaying = std::thread([&] {
+        while (m_isRunning) {
+            for (int i = 0; i < 40; i++) { // Clearly a condition variable will do the job much better !
+                std::this_thread::sleep_for(25ms);
+                if (!m_isRunning) {
+                    break;
+                }
+            }
+            if (m_isPlay) {
+                m_timeElapse++;
+                fire();
+            }
+        }
+    });
 }
 
 PlayerViewListening::~PlayerViewListening() {
+    m_isRunning = false;
+    if (m_threadPlaying.joinable()) {
+        m_threadPlaying.join();
+    }
 }
 
-bool isPlay = true;
-
-std::unique_ptr<PlayerView> PlayerViewListening::process(const std::string & cmd) {
+void PlayerViewListening::process(const std::string & cmd) {
     if (cmd == "b") {
-        return std::unique_ptr<PlayerView>(new PlayerViewTrack(0));
+        std::unique_ptr<PlayerView> state(new PlayerViewTrack(0));
+        p.setState(state);
     }
     else if (cmd == "p" || cmd == " ") {
-        isPlay = !isPlay;
-        return std::unique_ptr<PlayerView>(new PlayerViewListening(m_track));
+        m_isPlay = !m_isPlay;
     }
-    else {
-        return std::unique_ptr<PlayerView>(new PlayerViewListening(m_track));
+    else if (cmd == "n") {
+        const uint32_t trackId = m_trackId + 1;
+        std::unique_ptr<PlayerView> state(new PlayerViewListening(trackId));
+        p.setState(state);
+    }
+    else if (cmd == "e") {
+        std::unique_ptr<PlayerView> state(new PlayerViewListening(m_trackId - 1));
+        p.setState(state);
     }
 }
 
 Component PlayerViewListening::getView() {
-    static double percent = 0.0;
-    percent += 0.1;
-    percent = std::min(percent, 1.0);
-    const Track & track = p.getLibrary().getTrack(0);
+    const Track & track = p.getLibrary().getTrack(m_trackId);
+    double percent = 1.0 - (double) (std::min(track.getTime(), track.getTime() - m_timeElapse)).count() / (double) track.getTime().count();
+    if (percent == 1.0) {
+        // Song finish
+        process("n");
+    }
     auto line0 = [&track] {
         std::ostringstream oss;
         oss << "Name : " << track.getTitle();
@@ -145,17 +189,16 @@ Component PlayerViewListening::getView() {
         oss << "Author : " << track.getAuthor();
         return oss.str();
     };
-    auto lineStatus = [] {
+    auto lineStatus = [&] {
         std::ostringstream oss;
-        oss << "< Previous     " << (isPlay ? "Play " : "Pause") << "          Next >";
+        oss << "< prEvious     " << (m_isPlay ? "Play " : "Pause") << "          Next >";
         return oss.str();
     };
-    
     return StackLayout<>{
                     Text(line0()),
                     Text(line1()),
-                    Text("----------------------I-------------"),
-                    Text("0.00                            2.35"),
+                    Progress(percent, Pixel{' ', {(m_isPlay ? Color::Blue : Color::Red)}}, Pixel{' ', {(m_isPlay ? Color::Cyan : Color::Yellow)}}),
+                    Text(Style(Color::Black, FontColor::White, Font::Bold), "0.00                            2.35"),
                     Text(lineStatus()),
                     Text("Random                        rEpeat"),
                     Text("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"),
@@ -163,8 +206,8 @@ Component PlayerViewListening::getView() {
             };
 }
 
-PlayerViewTrack TRACK_VIEW = PlayerViewTrack(0);
-PlayerViewListening LISTENING_VIEW = PlayerViewListening(Track::STUB);
+PlayerViewTrack TRACK_VIEW(0);
+PlayerViewListening LISTENING_VIEW(0);
 
 // When playing :
 

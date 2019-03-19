@@ -2,7 +2,10 @@
 #ifndef MY_PLAYER_PLAYER_H
 #define MY_PLAYER_PLAYER_H
 
+#include <atomic>
+#include <mutex>
 #include <string>
+#include <thread>
 
 #include <rxterm/terminal.hpp>
 #include <rxterm/style.hpp>
@@ -22,15 +25,16 @@ using namespace rxterm;
 class PlayerView {
 protected:
 
-    std::string m_component;
-
 public:
-    PlayerView(std::string cmp) : m_component(cmp) {
+    PlayerView() {
     }
+
     virtual ~PlayerView();
 
-    virtual std::unique_ptr<PlayerView> process(const std::string & cmd) = 0;
+    virtual void process(const std::string & cmd) = 0;
     virtual Component getView() = 0;
+
+    void fire();
 };
 
 class PlayerViewTrack : public PlayerView {
@@ -42,32 +46,39 @@ public:
     PlayerViewTrack(int index);
     virtual ~PlayerViewTrack();
 
-    std::unique_ptr<PlayerView> process(const std::string & cmd) override;
+    void process(const std::string & cmd) override;
     Component getView() override;
 };
 
 class PlayerViewListening : public PlayerView {
 private:
 
-    const Track & m_track;
+    const uint32_t m_trackId;
+
+    std::atomic_bool m_isRunning;
+    bool m_isPlay;
+    std::chrono::seconds m_timeElapse;
+    std::thread m_threadPlaying;
 
 public:
-    PlayerViewListening(const Track & track);
+    PlayerViewListening(const uint32_t trackId);
     virtual ~PlayerViewListening();
 
-    std::unique_ptr<PlayerView> process(const std::string & cmd) override;
+    void process(const std::string & cmd) override;
     Component getView() override;
 };
 
 class Player {
 private:
 
+    std::recursive_mutex m_lock;
     Library m_library;
-    std::unique_ptr<PlayerView> m_view;
+    std::unique_ptr<PlayerView> m_state;
+    std::unique_ptr<PlayerView> m_futureState;
 
 public:
 
-    Player() : m_view(new PlayerViewTrack(0)) {
+    Player() : m_state(new PlayerViewTrack(0)) {
     }
 
     void process();
@@ -78,7 +89,9 @@ public:
 
     std::vector<Track> getView(int indexStart, int count);
 
+    void updateView();
     void process(const std::string & cmd);
+    void setState(std::unique_ptr<PlayerView> & view);
 };
 
 #endif // MY_PLAYER_PLAYER_H

@@ -12,7 +12,8 @@ private:
 
 public:
     // @throw : std::out_of_range
-    Track getTrack(int trackId);
+    Track getTrack(uint32_t trackId);
+    //Track getNextTrack(const Track & track);
 
 };
 
