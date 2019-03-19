@@ -11,21 +11,32 @@
 #include <string.h>
 #include <termios.h>
 #include <time.h>
-
-#include <rxterm/terminal.hpp>
-#include <rxterm/style.hpp>
-#include <rxterm/image.hpp>
-#include <rxterm/reflow.hpp>
-#include <rxterm/components/text.hpp>
-#include <rxterm/components/stacklayout.hpp>
-#include <rxterm/components/flowlayout.hpp>
-#include <rxterm/components/progress.hpp>
-#include <rxterm/components/maxwidth.hpp>
-
-using namespace rxterm;
+#include <unistd.h>
 
 using namespace std::chrono_literals;
 using namespace std::string_literals;
+
+char getch() {
+        char buf = 0;
+        struct termios old = {0};
+        if (tcgetattr(0, &old) < 0)
+                perror("tcsetattr()");
+        old.c_lflag &= ~ICANON;
+        old.c_lflag &= ~ECHO;
+        old.c_cc[VMIN] = 1;
+        old.c_cc[VTIME] = 0;
+        if (tcsetattr(0, TCSANOW, &old) < 0)
+                perror("tcsetattr ICANON");
+        if (read(0, &buf, 1) < 0)
+                perror ("read()");
+        old.c_lflag |= ICANON;
+        old.c_lflag |= ECHO;
+        if (tcsetattr(0, TCSADRAIN, &old) < 0)
+                perror ("tcsetattr ~ICANON");
+        return (buf);
+}
+
+Player p;
 
 auto renderToTerm = [](auto const& vt, unsigned const w, Component const& c) {
     // TODO: get actual terminal width
@@ -51,96 +62,81 @@ void Player::process() {
 
     VirtualTerminal vt;
 
-    auto mainView = [](auto percent, 
-            auto tracks) -> StackLayout<> {
-                return {
-                        Text("Console music player"),
-                        Text(tracks.at(0).getTitle()),
-                        Text(tracks.at(1).getTitle()),
-                        Text(tracks.at(2).getTitle()),
-                        Text(tracks.at(3).getTitle()),
-                        Text(tracks.at(4).getTitle()),
-                        Progress(percent),
-                        Text(Style(Color::Black, FontColor::White, Font::Bold),
-                        "v Down     Switch     Up ^")
-                };
-            };
-
-    for (int i = 0; i < 101; i += 20) {
-        vt = renderToTerm(vt, 80, mainView(0.1, getView(0, 5)));
+    vt = renderToTerm(vt, 80, m_view->getView());
+    while (true) {
+        char c = getch();
+        std::string cmd(1, c);
+        process(cmd);
+        vt = renderToTerm(vt, 80, m_view->getView());
         std::this_thread::sleep_for(200ms);
     }
-
-    //std::cout << "f.n is " << f.n << '\n';
-
-    while (true) {
-        std::string cmd;
-        std::getline(std::cin, cmd);
-        process(cmd);
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-
-    /*
-    auto superProgressBar3Rows = [](auto x, auto y, auto z) -> StackLayout<> {
-    return {
-    Text("3 segment progressbar: "),
-    FlowLayout<>{
-    MaxWidth(20, Progress(x)),
-    MaxWidth(20, Progress(y)),
-    MaxWidth(20, Progress(z))
-    },
-    Text(Style(Color::Black, FontColor::White, Font::Bold), "3 segment progressbar: ")
-    };
-    };
-    auto superProgressBar3 = [](auto x, auto y, auto z) -> StackLayout<> {
-    return {
-    Text("3 segment progressbar: "),
-    FlowLayout<>{
-    MaxWidth(20, Progress(x)),
-    MaxWidth(20, Progress(y)),
-    MaxWidth(20, Progress(z))
-    },
-    Text(Style(Color::Black, FontColor::White, Font::Bold), "jment progressbar: ")
-    };
-    };
-
-    for (int i = 0; i < 101; i += 20) {
-    vt = renderToTerm(vt, 80, superProgressBar(0.01 * i, 0.02 * i, 0.03 * i));
-    std::this_thread::sleep_for(200ms);
-    }
-
-    for (int i = 0; i < 101; i += 20) {
-    vt = renderToTerm(vt, 80, superProgressBar3Rows(0.01 * i, 0.02 * i, 0.03 * i));
-    std::this_thread::sleep_for(200ms);
-    }*/
 }
 
 void Player::process(const std::string & cmd) {
-    m_view = m_view.process(cmd);
+    m_view = m_view->process(cmd);
 }
 
 PlayerView::~PlayerView() {
 }
 
-PlayerView & PlayerView::process(const std::string & cmd) {
-    return *this;
+PlayerViewTrack::PlayerViewTrack() : PlayerView("mlk") {
 }
 
 PlayerViewTrack::~PlayerViewTrack() {
 }
 
-PlayerView & PlayerViewTrack::process(const std::string & cmd) {
-    if (cmd == "play") {
-        return TRACK_VIEW;
+std::unique_ptr<PlayerView> PlayerViewTrack::process(const std::string & cmd) {
+    if (cmd == "p") {
+        return std::unique_ptr<PlayerView>(new PlayerViewListening());
     }
-    return LISTENING_VIEW;
+    return std::unique_ptr<PlayerView>(new PlayerViewTrack());
+}
+
+Component PlayerViewTrack::getView() {
+    static double percent = 0.0;
+    percent += 0.1;
+    return StackLayout<>{
+                    Text("Console music player"),
+                    Text(p.getLibrary().getTrack(0).getTitle()),
+                    Text(p.getLibrary().getTrack(1).getTitle()),
+                    Text(p.getLibrary().getTrack(2).getTitle()),
+                    Text(p.getLibrary().getTrack(3).getTitle()),
+                    Text(p.getLibrary().getTrack(4).getTitle()),
+                    Progress(percent),
+                    Text(Style(Color::Black, FontColor::White, Font::Bold),
+                    "v Down     Switch     Up ^")
+            };
+}
+
+PlayerViewListening::PlayerViewListening() : PlayerView("mlk") {
 }
 
 PlayerViewListening::~PlayerViewListening() {
 }
 
-PlayerView & PlayerViewListening::process(const std::string & cmd) {
-    return LISTENING_VIEW;
+std::unique_ptr<PlayerView> PlayerViewListening::process(const std::string & cmd) {
+    if (cmd == "b") {
+        return std::unique_ptr<PlayerView>(new PlayerViewTrack());
+    }
+    else {
+        return std::unique_ptr<PlayerView>(new PlayerViewListening());
+    }
+}
+
+Component PlayerViewListening::getView() {
+    static double percent = 0.0;
+    percent += 0.1;
+    percent = std::min(percent, 1.0);
+    return StackLayout<>{
+                    Text("Name : toto.mp3"),
+                    Text("Author : Plop plop"),
+                    Text("----------------------I-------------"),
+                    Text("0.00                            2.35"),
+                    Text("< Previous     Pause          Next >"),
+                    Text("Random                        rEpeat"),
+                    Text("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"),
+                    Text("Back to tracklist"),
+            };
 }
 
 PlayerViewTrack TRACK_VIEW = PlayerViewTrack();
@@ -185,3 +181,10 @@ PlayerViewListening LISTENING_VIEW = PlayerViewListening();
 // < Previous   Pause    Next >
 // Random O            rEpeat O
 // Back to menu
+
+int main() {
+
+  p.process();
+
+  return 0;
+}

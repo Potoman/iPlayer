@@ -4,55 +4,69 @@
 
 #include <string>
 
+#include <rxterm/terminal.hpp>
+#include <rxterm/style.hpp>
+#include <rxterm/image.hpp>
+#include <rxterm/reflow.hpp>
+#include <rxterm/components/text.hpp>
+#include <rxterm/components/stacklayout.hpp>
+#include <rxterm/components/flowlayout.hpp>
+#include <rxterm/components/progress.hpp>
+#include <rxterm/components/maxwidth.hpp>
+
 #include "Library.h"
 #include "Track.h"
 
+using namespace rxterm;
+
 class PlayerView {
+protected:
+
+    std::string m_component;
+
 public:
+    PlayerView(std::string cmp) : m_component(cmp) {
+    }
     virtual ~PlayerView();
 
-    virtual PlayerView & process(const std::string & cmd);
+    virtual std::unique_ptr<PlayerView> process(const std::string & cmd) = 0;
+    virtual Component getView() = 0;
 };
 
 class PlayerViewTrack : public PlayerView {
 public:
+    PlayerViewTrack();
     virtual ~PlayerViewTrack();
 
-    PlayerView & process(const std::string & cmd) override;
+    std::unique_ptr<PlayerView> process(const std::string & cmd) override;
+    Component getView() override;
 };
 
 class PlayerViewListening : public PlayerView {
 public:
+    PlayerViewListening();
     virtual ~PlayerViewListening();
 
-    PlayerView & process(const std::string & cmd) override;
+    std::unique_ptr<PlayerView> process(const std::string & cmd) override;
+    Component getView() override;
 };
-
-namespace {
-PlayerViewTrack TRACK_VIEW;
-PlayerViewListening LISTENING_VIEW;
-}
 
 class Player {
 private:
 
     Library m_library;
-    PlayerView & m_view;
+    std::unique_ptr<PlayerView> m_view;
 
 public:
 
-    Player() : m_view(TRACK_VIEW) {
+    Player() : m_view(new PlayerViewTrack()) {
     }
-    /*TrackId addTrack(const std::string & trackPath);
-
-    void removeTrack();
-
-    void createTrack();
-
-    void play(const TrackId & trackId);*/
 
     void process();
 
+    Library & getLibrary() {
+        return m_library;
+    }
 
     std::vector<Track> getView(int indexStart, int count);
 
