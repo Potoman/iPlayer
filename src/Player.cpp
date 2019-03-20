@@ -260,7 +260,7 @@ Component PlayerViewListening::getView() {
                     Text(lineStatus()),
                     Text("                                    "),
                     Text("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"),
-                    Text("Back to tracklist"),
+                    Text("Back"),
             };
 }
 
