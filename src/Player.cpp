@@ -147,6 +147,9 @@ void PlayerViewTrack::process(const std::string & cmd) {
             fire();
         }
     }
+    else if (cmd == "q") {
+        exit(0);
+    }
 }
 
 Component PlayerViewTrack::getView() {
@@ -160,7 +163,7 @@ Component PlayerViewTrack::getView() {
                     Text("  " + p.getLibrary().getTrack(m_currentIndex + 2).getTitle()),
                     Progress(percent, Pixel{' ', {Color::White}}, Pixel{' ', {Color::Green}}),
                     Text(Style(Color::Black, FontColor::White, Font::Bold),
-                    "v Down           Add            Up ^")
+                    "v Down       Add      Quit      Up ^")
             };
 }
 
