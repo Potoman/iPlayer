@@ -60,8 +60,19 @@ void Player::process() {
     vt = renderToTerm(vt, SIZE, m_state->getView());
     while (true) {
         char c = getch();
-        std::string cmd(1, c);
-        process(cmd);
+        if (c == 65) {
+            process("up");
+        }
+        else if (c == 66) {
+            process("down");
+        }
+        else if (c == 10) {
+            process("enter");
+        }
+        else {
+            std::string cmd(1, c);
+            process(cmd);
+        }
         updateView();
         std::this_thread::sleep_for(25ms);
     }
@@ -100,25 +111,34 @@ PlayerViewTrack::~PlayerViewTrack() {
 }
 
 void PlayerViewTrack::process(const std::string & cmd) {
-    if (cmd == "p") {
-        std::unique_ptr<PlayerView> state(new PlayerViewListening(m_currentIndex));
-        p.setState(state);
+    if (cmd == "p" || cmd == "enter") {
+        if (p.getLibrary().isValidIndex(m_currentIndex)) {
+            std::unique_ptr<PlayerView> state(new PlayerViewListening(m_currentIndex));
+            p.setState(state);
+        }
+    }
+    else if (cmd == "d" || cmd == "down") {
+        m_currentIndex++;
+        fire();
+    }
+    else if (cmd == "u" || cmd == "up") {
+        m_currentIndex--;
+        fire();
     }
 }
 
 Component PlayerViewTrack::getView() {
-    static double percent = 0.0;
-    percent += 0.1;
+    double percent = p.getLibrary().getSize() == 0 ? 1.0 : (double) m_currentIndex / (double) p.getLibrary().getSize();
     return StackLayout<>{
                     Text("Console music player"),
-                    Text(p.getLibrary().getTrack(0).getTitle()),
-                    Text(p.getLibrary().getTrack(1).getTitle()),
-                    Text(p.getLibrary().getTrack(2).getTitle()),
-                    Text(p.getLibrary().getTrack(3).getTitle()),
-                    Text(p.getLibrary().getTrack(4).getTitle()),
-                    Progress(percent),
+                    Text("  " + p.getLibrary().getTrack(m_currentIndex - 2).getTitle()),
+                    Text("  " + p.getLibrary().getTrack(m_currentIndex - 1).getTitle()),
+                    Text("> " + p.getLibrary().getTrack(m_currentIndex).getTitle() + " <"),
+                    Text("  " + p.getLibrary().getTrack(m_currentIndex + 1).getTitle()),
+                    Text("  " + p.getLibrary().getTrack(m_currentIndex + 2).getTitle()),
+                    Progress(percent, Pixel{' ', {Color::White}}, Pixel{' ', {Color::Green}}),
                     Text(Style(Color::Black, FontColor::White, Font::Bold),
-                    "v Down     Switch     Up ^")
+                    "v Down          Switch          Up ^")
             };
 }
 
@@ -148,7 +168,7 @@ PlayerViewListening::~PlayerViewListening() {
 
 void PlayerViewListening::process(const std::string & cmd) {
     if (cmd == "b") {
-        std::unique_ptr<PlayerView> state(new PlayerViewTrack(0));
+        std::unique_ptr<PlayerView> state(new PlayerViewTrack(m_trackId));
         p.setState(state);
     }
     else if (cmd == "p" || cmd == " ") {

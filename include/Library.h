@@ -14,6 +14,8 @@ public:
 
     Track getTrack(uint32_t trackId);
     void addTrack(Track & track);
+    bool isValidIndex(uint32_t trackId);
+    uint32_t getSize();
 
 };
 
