@@ -198,12 +198,17 @@ void PlayerViewListening::process(const std::string & cmd) {
     }
     else if (cmd == "n") {
         const uint32_t trackId = m_trackId + 1;
-        std::unique_ptr<PlayerView> state(new PlayerViewListening(trackId));
-        p.setState(state);
+        if (p.getLibrary().isValidIndex(trackId)) {
+            std::unique_ptr<PlayerView> state(new PlayerViewListening(trackId));
+            p.setState(state);
+        }
     }
     else if (cmd == "e") {
-        std::unique_ptr<PlayerView> state(new PlayerViewListening(m_trackId - 1));
-        p.setState(state);
+        const uint32_t trackId = m_trackId - 1;
+        if (p.getLibrary().isValidIndex(trackId)) {
+            std::unique_ptr<PlayerView> state(new PlayerViewListening(trackId));
+            p.setState(state);
+        }
     }
 }
 
