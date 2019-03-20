@@ -127,6 +127,25 @@ void PlayerViewTrack::process(const std::string & cmd) {
     }
     else if (cmd == "a") {
         // Here add track.
+        std::cout << "Adding music..." << std::endl;
+        std::string title;
+        std::cout << "Tap title : ";
+        std::getline(std::cin, title);
+        std::string author;
+        std::cout << "Tap author : ";
+        std::getline(std::cin, author);
+        std::string time;
+        std::cout << "Tap time (in seconds) of the song : ";
+        std::getline(std::cin, time);
+        try {
+            Track t(title, author, std::chrono::seconds(std::stoi(time)));
+            p.getLibrary().addTrack(t);
+            fire();
+        }
+        catch (const std::invalid_argument & ia) {
+            std::cerr << "Wrong time.";
+            fire();
+        }
     }
 }
 
@@ -282,7 +301,7 @@ PlayerViewListening LISTENING_VIEW(0);
 
 int main() {
 
-    for (int i = 0; i < 30; i++) {
+    for (int i = 0; i < 7; i++) {
         std::string title = "song " + std::to_string(i) + ".mp3";
         Track t(title, "Johnny", std::chrono::seconds(55));
         p.getLibrary().addTrack(t);
