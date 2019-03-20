@@ -258,7 +258,7 @@ Component PlayerViewListening::getView() {
                     Progress(percent, Pixel{' ', {(m_isPlay ? Color::Blue : Color::Red)}}, Pixel{' ', {(m_isPlay ? Color::Cyan : Color::Yellow)}}),
                     Text(Style(Color::Black, FontColor::White, Font::Bold), timeStatus()),
                     Text(lineStatus()),
-                    Text("Random                        rEpeat"),
+                    Text("                                    "),
                     Text("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"),
                     Text("Back to tracklist"),
             };
