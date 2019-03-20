@@ -264,49 +264,6 @@ Component PlayerViewListening::getView() {
             };
 }
 
-PlayerViewTrack TRACK_VIEW(0);
-PlayerViewListening LISTENING_VIEW(0);
-
-// When playing :
-
-// Main menu :
-
-// Console Music Player
-// 
-// > Manage track
-// > Play track
-// > Show tracklist
-// > Configure
-
-// Track : 
-
-// Track list :
-
-// Track : toto.tl
-// ^
-// 3: first_track             <
-// 4: my_track
-// 5: my_second_track
-// v
-
-// Song list :
-
-// Track : toto.tl
-// ^
-// 3: toto.mp3                <
-// 4: plip.mp3
-// 5: plip.mp3
-// v
-
-// Track listen :
-
-//      Name : toto.mp3
-// ----------^-----------------
-// 0.00                    2.35
-// < Previous   Pause    Next >
-// Random O            rEpeat O
-// Back to menu
-
 int main() {
 
     for (int i = 0; i < 7; i++) {
